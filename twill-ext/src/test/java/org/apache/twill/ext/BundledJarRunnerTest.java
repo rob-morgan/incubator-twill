@@ -18,15 +18,16 @@
 package org.apache.twill.ext;
 
 import com.google.common.io.ByteStreams;
-import com.google.common.io.Files;
 
 import org.junit.Assert;
+import org.junit.ClassRule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.jar.JarOutputStream;
 import java.util.zip.ZipEntry;
 
@@ -34,6 +35,9 @@ import java.util.zip.ZipEntry;
  * Tests for {@link BundledJarRunner}.
  */
 public class BundledJarRunnerTest {
+
+  @ClassRule
+  public static TemporaryFolder tempDir = new TemporaryFolder();
 
   private static String jarOutput;
 
@@ -71,19 +75,13 @@ public class BundledJarRunnerTest {
   }
 
   private void runJarFile(String jarFileName, String className, String[] mainArgs) throws Throwable {
-    File outdir = Files.createTempDir();
-    try {
-      File jarfile = new File(outdir, jarFileName);
-      createJarFileFromClass(className, jarfile);
-      BundledJarRunner.Arguments args = new BundledJarRunner.Arguments(
-          jarFileName, "lib", className, mainArgs);
-      BundledJarRunner jarRunner = new BundledJarRunner(jarfile, args);
-      jarRunner.load();
-      jarRunner.run();
-    } finally {
-      cleanDirectory(outdir);
-      outdir.delete();
-    }
+    File jarfile = tempDir.newFile(jarFileName);
+    createJarFileFromClass(className, jarfile);
+    BundledJarRunner.Arguments args = new BundledJarRunner.Arguments(
+        jarFileName, "lib", className, mainArgs);
+    BundledJarRunner jarRunner = new BundledJarRunner(jarfile, args);
+    jarRunner.load();
+    jarRunner.run();
   }
 
   private void createJarFileFromClass(String className, File jarfile) throws IOException {
@@ -107,19 +105,6 @@ public class BundledJarRunnerTest {
   private byte[] getClassBytes(String classAsPath) throws IOException {
     InputStream input = getClass().getClassLoader().getResourceAsStream(classAsPath);
     return ByteStreams.toByteArray(input);
-  }
-
-  private void cleanDirectory(File dir) {
-    File[] files = dir.listFiles();
-    if (files == null) {
-      return;
-    }
-    for (File file: files) {
-      if (file.isDirectory()) {
-        cleanDirectory(file);
-      }
-      file.delete();
-    }
   }
 }
 
